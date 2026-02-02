@@ -1,0 +1,203 @@
+// Prisma schema for Safety Patrol System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 사용자 역할
+enum UserRole {
+  ADMIN           // 통합 관리자 (본사 안전보건팀)
+  SITE_MANAGER    // 사업소 관리자 (안전담당자)
+  SUPERVISOR      // 관리감독자
+}
+
+// 사용자
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          UserRole
+  siteId        String?
+  site          Site?     @relation(fields: [siteId], references: [id])
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // 작성한 순찰일지
+  patrolLogs    PatrolLog[]
+  saoReports    SAOReport[]
+  
+  @@index([email])
+  @@index([siteId])
+}
+
+// 사업소
+model Site {
+  id            String    @id @default(uuid())
+  name          String
+  code          String    @unique
+  address       String?
+  description   String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  users         User[]
+  patrolLogs    PatrolLog[]
+  saoReports    SAOReport[]
+  
+  @@index([code])
+}
+
+// 관리감독자 안전순찰일지
+model PatrolLog {
+  id                String    @id @default(uuid())
+  
+  // 기본 정보
+  inspectorId       String
+  inspector         User      @relation(fields: [inspectorId], references: [id])
+  siteId            String
+  site              Site      @relation(fields: [siteId], references: [id])
+  
+  inspectionDate    DateTime
+  department        String
+  location          String
+  
+  // 담당/소장 승인
+  approved          Boolean   @default(false)
+  approvedBy        String?
+  approvedAt        DateTime?
+  
+  // 작성 정보
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // 점검 항목들
+  items             PatrolItem[]
+  
+  // 특이사항
+  notes             String?
+  
+  @@index([inspectorId])
+  @@index([siteId])
+  @@index([inspectionDate])
+}
+
+// 순찰 점검 항목
+model PatrolItem {
+  id            String       @id @default(uuid())
+  
+  patrolLogId   String
+  patrolLog     PatrolLog    @relation(fields: [patrolLogId], references: [id], onDelete: Cascade)
+  
+  category      String       // 작업장일반, 작업자, 유해위험물, 환경/시설물, 기타
+  itemNumber    Int          // 항목 번호
+  itemText      String       // 점검 항목 텍스트
+  
+  status        ItemStatus   // 양호, 불량
+  notes         String?      // 비고
+  
+  // 사진 첨부
+  photos        Photo[]
+  
+  createdAt     DateTime     @default(now())
+  
+  @@index([patrolLogId])
+  @@index([category])
+}
+
+// 점검 상태
+enum ItemStatus {
+  GOOD          // 양호
+  BAD           // 불량
+}
+
+// SAO (안전행동관찰)
+model SAOReport {
+  id                String    @id @default(uuid())
+  
+  // 기본 정보
+  inspectorId       String
+  inspector         User      @relation(fields: [inspectorId], references: [id])
+  siteId            String
+  site              Site      @relation(fields: [siteId], references: [id])
+  
+  reportDate        DateTime
+  reportTime        String?   // 시분
+  workplace         String    // 작업부서명
+  workArea          String    // 관찰지역
+  
+  // 작업 유형
+  workType          String?   // 점검/경비, 공사
+  
+  // 근무 형태
+  workShift         String?   // 교대, 상주, 하도급, 별도공사
+  
+  // 관찰자 정보
+  observerCount     Int       @default(1)
+  workerCount       Int       @default(0) // 작업인원
+  
+  // 작업 대응
+  workResponse      String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // SAO 체크 항목들
+  items             SAOItem[]
+  
+  @@index([inspectorId])
+  @@index([siteId])
+  @@index([reportDate])
+}
+
+// SAO 체크 항목
+model SAOItem {
+  id            String       @id @default(uuid())
+  
+  saoReportId   String
+  saoReport     SAOReport    @relation(fields: [saoReportId], references: [id], onDelete: Cascade)
+  
+  category      String       // 작업자의 반응, 개인보호구, 작업자의 위치와 자세, 작업도구/장비, 작업절차, 정리정돈/기준, 관찰결과 특이사항
+  itemNumber    Int          // 항목 번호
+  itemText      String       // 체크 항목 텍스트
+  
+  checked       Boolean      @default(false)
+  notes         String?      // 기타 내용
+  
+  // 사진 첨부
+  photos        Photo[]
+  
+  createdAt     DateTime     @default(now())
+  
+  @@index([saoReportId])
+  @@index([category])
+}
+
+// 사진
+model Photo {
+  id            String       @id @default(uuid())
+  
+  url           String       // S3 URL
+  filename      String
+  mimeType      String
+  size          Int
+  
+  // 어느 항목에 첨부되었는지
+  patrolItemId  String?
+  patrolItem    PatrolItem?  @relation(fields: [patrolItemId], references: [id], onDelete: Cascade)
+  
+  saoItemId     String?
+  saoItem       SAOItem?     @relation(fields: [saoItemId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime     @default(now())
+  
+  @@index([patrolItemId])
+  @@index([saoItemId])
+}
