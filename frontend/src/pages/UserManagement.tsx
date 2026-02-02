@@ -81,7 +81,7 @@ const UserManagement = () => {
         email: '',
         password: '',
         name: '',
-        role: 'SUPERVISOR',
+        role: 'SUPERVISOR' as UserRole,
         siteId: '',
       });
     }

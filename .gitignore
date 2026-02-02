@@ -10,6 +10,7 @@ coverage/
 build/
 dist/
 !backend/dist/
+!frontend/dist/
 
 # Environment variables
 .env
