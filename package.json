@@ -15,7 +15,7 @@
     "build:frontend": "cd frontend && npm run build",
     "build:all": "cd frontend && npm run build && cd ../backend && npm run build",
     "start:replit": "npm run setup:replit && npm run serve:replit",
-    "setup:replit": "npm install && cd backend && npm install && npm install typescript && npx prisma generate && npx -p typescript tsc && cd ../frontend && npm install && npm run build",
+    "setup:replit": "npm install && cd backend && npm install && npm install typescript @types/node @types/express @types/cors @types/bcryptjs @types/jsonwebtoken && npx prisma generate && npx -p typescript tsc && cd ../frontend && npm install && npm run build",
     "serve:replit": "cd backend && node dist/server.js"
   },
   "keywords": [
